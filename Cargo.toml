@@ -1,14 +1,14 @@
 [package]
 name = "lhapdf"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Christopher Schwan <handgranaten-herbert@posteo.de>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/N3PDF/pineappl"
+repository = "https://github.com/cschwan/lhapdf"
 readme = "README.md"
 keywords = ["high-energy-physics", "physics"]
 categories = ["science"]
-description = "Interface to LHAPDF"
+description = "(Unofficial) Rust bindings for the LHAPDF C++ library"
 
 [dependencies]
 cpp = "0.5"
