@@ -1,2 +1,2 @@
-(Unofficial) Rust bindings for the C++ [LHAPDF](https://lhapdf.hepforge.org)
+(Unofficial) Rust bindings for the [LHAPDF](https://lhapdf.hepforge.org) C++
 library

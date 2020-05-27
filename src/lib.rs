@@ -1,3 +1,8 @@
+#![warn(clippy::all, clippy::cargo, clippy::nursery, clippy::pedantic)]
+#![warn(missing_docs)]
+
+//! (Unofficial) Rust wrapper for the [LHAPDF](https://lhapdf.hepforge.org) C++ library.
+
 #[macro_use]
 extern crate cpp;
 
@@ -8,6 +13,8 @@ cpp! {{
     #include <LHAPDF/LHAPDF.h>
 }}
 
+/// Get the names of all available PDF sets in the search path.
+#[must_use]
 pub fn available_pdf_sets() -> Vec<String> {
     let pdfs = unsafe {
         cpp!([] -> usize as "size_t" {
@@ -34,11 +41,14 @@ pub fn available_pdf_sets() -> Vec<String> {
     pdf_sets
 }
 
+/// Wrapper to an LHAPDF object of the type `LHAPDF::PDF`.
 pub struct Pdf {
     ptr: *mut c_void,
 }
 
 impl Pdf {
+    /// Constructor. Create a new PDF with the given PDF `setname` and `member` ID.
+    #[must_use]
     pub fn with_setname_and_member(setname: &str, member: i32) -> Self {
         let setname = CString::new(setname).unwrap();
         let setname_ptr = setname.as_ptr();
@@ -53,6 +63,8 @@ impl Pdf {
         }
     }
 
+    /// Constructor. Create a new PDF with the given `lhaid` ID code.
+    #[must_use]
     pub fn with_lhaid(lhaid: i32) -> Self {
         Self {
             ptr: unsafe {
@@ -63,6 +75,8 @@ impl Pdf {
         }
     }
 
+    /// Get the PDF `x * f(x)` value at `x` and `q2` for the given PDG ID.
+    #[must_use]
     pub fn xfx_q2(&self, id: i32, x: f64, q2: f64) -> f64 {
         let self_ptr = self.ptr;
 
@@ -76,6 +90,8 @@ impl Pdf {
         }
     }
 
+    /// Value of of the strong coupling at `q2` used by this PDF.
+    #[must_use]
     pub fn alphas_q2(&self, q2: f64) -> f64 {
         let self_ptr = self.ptr;
 
