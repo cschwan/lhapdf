@@ -1,6 +1,6 @@
 [package]
 name = "lhapdf"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Christopher Schwan <handgranaten-herbert@posteo.de>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
@@ -11,8 +11,15 @@ categories = ["science"]
 description = "(Unofficial) Rust bindings for the LHAPDF C++ library"
 
 [dependencies]
+cfg-if = "0.1"
 cpp = "0.5"
 
 [build-dependencies]
 cpp_build = "0.5"
 pkg-config = "0.3"
+
+[features]
+docs-only = []
+
+[package.metadata.docs.rs]
+features = [ "docs-only" ]

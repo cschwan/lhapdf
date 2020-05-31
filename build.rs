@@ -1,3 +1,4 @@
+#[cfg(not(feature = "docs-only"))]
 fn main() {
     let lhapdf = pkg_config::Config::new()
         .atleast_version("6")
@@ -18,4 +19,8 @@ fn main() {
     for lib in lhapdf.libs {
         println!("cargo:rustc-link-lib={}", lib);
     }
+}
+
+#[cfg(feature = "docs-only")]
+fn main() {
 }
