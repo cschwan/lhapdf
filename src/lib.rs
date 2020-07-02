@@ -58,6 +58,46 @@ pub fn available_pdf_sets() -> Vec<String> {
     }
 }
 
+/// Look up a PDF set name and member ID by the LHAPDF ID code. The set name and member ID are
+/// returned as a tuple in an `Option`. If lookup fails, `None` is returned.
+#[must_use]
+pub fn lookup_pdf(lhaid: i32) -> Option<(String, i32)> {
+    cfg_if! {
+        if #[cfg(feature = "docs-only")] {
+            None
+        } else {
+            let pair = unsafe {
+                cpp!([lhaid as "int"] -> *const c_void as "const void *" {
+                    return new std::pair<std::string, int>(LHAPDF::lookupPDF(lhaid));
+                })
+            };
+
+            let set_name = unsafe { CStr::from_ptr(
+                cpp!([pair as "std::pair<std::string, int>*"] -> *const c_char as "const char *" {
+                    return pair->first.c_str();
+                }))
+            }.to_str().unwrap().to_string();
+            let member_id = unsafe {
+                cpp!([pair as "std::pair<std::string, int>*"] -> i32 as "int" {
+                    return pair->second;
+                })
+            };
+
+            unsafe {
+                cpp!([pair as "std::pair<std::string, int>*"] -> () as "void" {
+                    return delete pair;
+                })
+            };
+
+            if (set_name == String::new()) && (member_id == -1) {
+                return None;
+            }
+
+            Some((set_name, member_id))
+        }
+    }
+}
+
 /// Wrapper to an LHAPDF object of the type `LHAPDF::PDF`.
 pub struct Pdf {
     ptr: *mut c_void,
