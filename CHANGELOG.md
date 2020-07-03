@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added new member `PdfSet::mk_pdfs`
+
 ## [0.1.3] - 02/07/2020
 
 - added PDF uncertainty structs and methods

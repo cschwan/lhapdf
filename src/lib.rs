@@ -250,6 +250,39 @@ impl PdfSet {
         }
     }
 
+    /// Make all the PDFs in this set.
+    pub fn mk_pdfs(&self) -> Vec<Pdf> {
+        cfg_if! {
+            if #[cfg(feature = "docs-only")] {
+                vec![]
+            } else {
+                let self_ptr = self.ptr;
+                let mut pdfs = vec![];
+
+                unsafe {
+                    let vec = cpp!([self_ptr as "LHAPDF::PDFSet*"] -> *mut c_void as "std::vector<LHAPDF::PDF*>*" {
+                        return new std::vector<LHAPDF::PDF*>(self_ptr->mkPDFs());
+                    });
+                    let size = cpp!([vec as "std::vector<LHAPDF::PDF*>*"] -> usize as "std::size_t" {
+                        return vec->size();
+                    });
+
+                    for index in 0..size {
+                        pdfs.push(Pdf { ptr: cpp!([vec as "std::vector<LHAPDF::PDF*>*", index as "std::size_t"] -> *mut c_void as "LHAPDF::PDF*" {
+                            return vec->at(index);
+                        }) });
+                    }
+
+                    cpp!([vec as "std::vector<LHAPDF::PDF*>*"] -> () as "void" {
+                        delete vec;
+                    });
+                }
+
+                pdfs
+            }
+        }
+    }
+
     /// Calculate central value and error from vector values with appropriate formulae for this
     /// set.
     ///
