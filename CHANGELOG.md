@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added implementation of `Send` for `Pdf`. See `README.md` for guarantees.
+
 ## [0.1.5] - 04/07/2020
 
 ## [0.1.4] - 03/07/2020

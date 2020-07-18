@@ -184,6 +184,9 @@ impl Pdf {
     }
 }
 
+unsafe impl Send for Pdf {}
+unsafe impl Sync for Pdf {}
+
 impl Drop for Pdf {
     fn drop(&mut self) {
         cfg_if! {
