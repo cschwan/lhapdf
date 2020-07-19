@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6]
+
 - added implementation of `Send` for `Pdf`. See `README.md` for guarantees.
 
 ## [0.1.5] - 04/07/2020
@@ -32,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - first release
 
-[Unreleased]: https://github.com/cschwan/lhapdf/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/cschwan/lhapdf/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/cschwan/lhapdf/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cschwan/lhapdf/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/cschwan/lhapdf/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/cschwan/lhapdf/compare/v0.1.2...v0.1.3
