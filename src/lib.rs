@@ -17,6 +17,8 @@ cfg_if! {
         use std::os::raw::c_char;
 
         cpp! {{
+            #include <cstring>
+            #include <cstddef>
             #include <LHAPDF/LHAPDF.h>
         }}
     } else {
@@ -248,6 +250,40 @@ impl PdfSet {
                             return new LHAPDF::PDFSet(setname_ptr);
                         })
                     },
+                }
+            }
+        }
+    }
+
+    /// Retrieve a metadata string by key name.
+    pub fn entry(&self, key: &str) -> Option<String> {
+        cfg_if! {
+            if #[cfg(feature = "docs-only")] {
+                None
+            } else {
+                let self_ptr = self.ptr;
+                let key = CString::new(key).unwrap();
+                let key_ptr = key.as_ptr();
+
+                unsafe {
+                    let has_key = cpp!([self_ptr as "LHAPDF::PDFSet*", key_ptr as "const char*"] -> bool as "bool" {
+                        return self_ptr->has_key(key_ptr);
+                    });
+
+                    if has_key {
+                        let size = cpp!([self_ptr as "LHAPDF::PDFSet*", key_ptr as "const char*"] -> usize as "std::size_t" {
+                            auto const& value = self_ptr->get_entry(key_ptr);
+                            return value.size();
+                        });
+                        let value_ptr = CString::new(vec![b' '; size]).unwrap().into_raw();
+                        cpp!([self_ptr as "LHAPDF::PDFSet*", key_ptr as "const char*", value_ptr as "char*"] {
+                            auto const& value = self_ptr->get_entry(key_ptr);
+                            std::strncpy(value_ptr, value.c_str(), value.size() + 1);
+                        });
+                        Some(CString::from_raw(value_ptr).into_string().unwrap())
+                    } else {
+                        None
+                    }
                 }
             }
         }
