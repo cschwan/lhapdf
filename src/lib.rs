@@ -417,3 +417,53 @@ impl Drop for PdfSet {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn check_available_pdf_sets() {
+        let pdf_sets = available_pdf_sets();
+
+        assert!(pdf_sets
+            .iter()
+            .any(|pdf_set| pdf_set == "NNPDF31_nlo_as_0118_luxqed"));
+    }
+
+    #[test]
+    fn check_lookup_pdf() {
+        assert!(matches!(lookup_pdf(324900), Some((name, member))
+            if (name == "NNPDF31_nlo_as_0118_luxqed") && (member == 0)));
+        assert!(matches!(lookup_pdf(324901), Some((name, member))
+            if (name == "NNPDF31_nlo_as_0118_luxqed") && (member == 1)));
+        assert!(matches!(lookup_pdf(-1), None));
+    }
+
+    #[test]
+    fn check_pdf() {
+        let pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0);
+        let pdf_1 = Pdf::with_lhaid(324900);
+
+        let value_0 = pdf_0.xfx_q2(2, 0.5, 90.0 * 90.0);
+        let value_1 = pdf_1.xfx_q2(2, 0.5, 90.0 * 90.0);
+
+        assert_ne!(value_0, 0.0);
+        assert_eq!(value_0, value_1);
+
+        let value_0 = pdf_0.alphas_q2(90.0 * 90.0);
+        let value_1 = pdf_1.alphas_q2(90.0 * 90.0);
+
+        assert_ne!(value_0, 0.0);
+        assert_eq!(value_0, value_1);
+    }
+
+    #[test]
+    fn check_pdf_set() {
+        let pdf_set = PdfSet::new("NNPDF31_nlo_as_0118_luxqed");
+
+        assert!(matches!(pdf_set.entry("Particle"), Some(value) if value == "2212"));
+        assert!(matches!(pdf_set.entry("Flavors"), Some(value)
+            if value == "[-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 22]"));
+    }
+}

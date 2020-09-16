@@ -16,14 +16,25 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Install LHAPDF 6.2.3
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install LHAPDF 6.3.0
       run: |
-        wget 'https://lhapdf.hepforge.org/downloads/?f=LHAPDF-6.2.3.tar.gz' -O LHAPDF-6.2.3.tar.gz
-        tar xzf LHAPDF-6.2.3.tar.gz
-        cd LHAPDF-6.2.3
-        ./configure --prefix=/usr
+        wget 'https://lhapdf.hepforge.org/downloads/?f=LHAPDF-6.3.0.tar.gz' -O LHAPDF-6.3.0.tar.gz
+        tar xzf LHAPDF-6.3.0.tar.gz
+        cd LHAPDF-6.3.0
+        ./configure --prefix=${HOME}/prefix
         make -j
-        sudo make install
+        make install
+        echo "::add-path::${HOME}/prefix/bin"
+        echo "::set-env name=LD_LIBRARY_PATH::${HOME}/prefix/lib"
+        echo "::set-env name=PKG_CONFIG_PATH::${HOME}/prefix/lib/pkgconfig"
+        echo "::set-env name=PYTHONPATH::${HOME}/prefix/lib/python3.7/site-packages"
+    - name: Install NNPDF31_nlo_as_0118_luxqed
+      run: |
+        lhapdf install NNPDF31_nlo_as_0118_luxqed
     - name: Build
       run: cargo build --verbose
     - name: Run tests
