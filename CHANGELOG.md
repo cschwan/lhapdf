@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.7]
+## [0.1.7] - 16/09/2020
 
 - added a few tests
 - added `PdfSet::entry` method
 
-## [0.1.6]
+## [0.1.6] - 19/07/2020
 
 - added implementation of `Send` for `Pdf`. See `README.md` for guarantees.
 
