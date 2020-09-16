@@ -22,5 +22,4 @@ fn main() {
 }
 
 #[cfg(feature = "docs-only")]
-fn main() {
-}
+fn main() {}

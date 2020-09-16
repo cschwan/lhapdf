@@ -2,6 +2,8 @@
 [![Documentation](https://docs.rs/lhapdf/badge.svg)](https://docs.rs/lhapdf)
 [![crates.io](https://img.shields.io/crates/v/lhapdf.svg)](https://crates.io/crates/lhapdf)
 
+# Description
+
 (Unofficial) Rust bindings for the [LHAPDF](https://lhapdf.hepforge.org) C++
 library
 
