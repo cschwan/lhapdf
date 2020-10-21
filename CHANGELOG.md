@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 21/10/2020
+
 - added functions `set_verbosity` and `verbosity`
 
 ## [0.1.7] - 16/09/2020
@@ -41,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - first release
 
-[Unreleased]: https://github.com/cschwan/lhapdf/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/cschwan/lhapdf/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/cschwan/lhapdf/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/cschwan/lhapdf/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/cschwan/lhapdf/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cschwan/lhapdf/compare/v0.1.4...v0.1.5
