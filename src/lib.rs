@@ -100,6 +100,32 @@ pub fn lookup_pdf(lhaid: i32) -> Option<(String, i32)> {
     }
 }
 
+/// Convenient way to set the verbosity level.
+pub fn set_verbosity(verbosity: i32) {
+    cfg_if! {
+        if #[cfg(feature = "docs-only")] {
+        } else {
+            unsafe {
+                cpp!([verbosity as "int"] { LHAPDF::setVerbosity(verbosity); });
+            }
+        }
+    }
+}
+
+/// Convenient way to get the current verbosity level.
+#[must_use]
+pub fn verbosity() -> i32 {
+    cfg_if! {
+        if #[cfg(feature = "docs-only")] {
+            -1
+        } else {
+            unsafe {
+                cpp!([] -> i32 as "int" { return LHAPDF::verbosity(); })
+            }
+        }
+    }
+}
+
 /// Wrapper to an LHAPDF object of the type `LHAPDF::PDF`.
 pub struct Pdf {
     ptr: *mut c_void,
