@@ -256,6 +256,7 @@ impl PdfSet {
     }
 
     /// Retrieve a metadata string by key name.
+    #[must_use]
     pub fn entry(&self, key: &str) -> Option<String> {
         cfg_if! {
             if #[cfg(feature = "docs-only")] {
