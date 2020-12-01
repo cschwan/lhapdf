@@ -210,6 +210,27 @@ impl Pdf {
             }
         }
     }
+
+    /// Get the info class that actually stores and handles the metadata.
+    #[must_use]
+    pub fn set(&self) -> PdfSet {
+        cfg_if! {
+            if #[cfg(not(feature = "docs-only"))] {
+                let self_ptr = self.ptr;
+
+                PdfSet {
+                    ptr: unsafe {
+                        cpp!([self_ptr as "LHAPDF::PDF *"] -> *mut c_void as "LHAPDF::PDFSet *" {
+                            return &self_ptr->set();
+                        })
+                    },
+                    drop: false,
+                }
+            } else {
+                PdfSet { ptr: ptr::null_mut::<c_void>(), drop: false }
+            }
+        }
+    }
 }
 
 unsafe impl Send for Pdf {}
@@ -257,6 +278,7 @@ pub struct PdfUncertainty {
 /// Class for PDF set metadata and manipulation.
 pub struct PdfSet {
     ptr: *mut c_void,
+    drop: bool,
 }
 
 impl PdfSet {
@@ -265,7 +287,7 @@ impl PdfSet {
     pub fn new(setname: &str) -> Self {
         cfg_if! {
             if #[cfg(feature = "docs-only")] {
-                Self { ptr: ptr::null_mut::<c_void>() }
+                Self { ptr: ptr::null_mut::<c_void>(), drop: false }
             } else {
                 let setname = CString::new(setname).unwrap();
                 let setname_ptr = setname.as_ptr();
@@ -276,6 +298,7 @@ impl PdfSet {
                             return new LHAPDF::PDFSet(setname_ptr);
                         })
                     },
+                    drop: true
                 }
             }
         }
@@ -431,14 +454,16 @@ impl PdfSet {
 
 impl Drop for PdfSet {
     fn drop(&mut self) {
-        cfg_if! {
-            if #[cfg(not(feature = "docs-only"))] {
-                let self_ptr = self.ptr;
+        if self.drop {
+            cfg_if! {
+                 if #[cfg(not(feature = "docs-only"))] {
+                    let self_ptr = self.ptr;
 
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDFSet *"] -> () as "void" {
-                        delete self_ptr;
-                    })
+                    unsafe {
+                        cpp!([self_ptr as "LHAPDF::PDFSet *"] -> () as "void" {
+                            delete self_ptr;
+                        })
+                    }
                 }
             }
         }

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added method `Pdf::set`
+
 ## [0.1.8] - 21/10/2020
 
 - added functions `set_verbosity` and `verbosity`
