@@ -339,6 +339,32 @@ impl PdfSet {
         }
     }
 
+    /// Get the type of PDF errors in this set (replicas, symmhessian, hessian, custom, etc.).
+    pub fn error_type(&self) -> String {
+        cfg_if! {
+            if #[cfg(feature = "docs-only")] {
+                "".to_owned()
+            } else {
+                let self_ptr = self.ptr;
+
+                unsafe {
+                    let string = cpp!([self_ptr as "LHAPDF::PDFSet*"] -> *mut c_void as "std::string*" {
+                        return new std::string(self_ptr->errorType());
+                    });
+                    let cstr = cpp!([string as "std::string*"] -> *const c_char as "const char*" {
+                        return string->c_str();
+                    });
+
+                    let converted = CStr::from_ptr(cstr).to_str().unwrap().to_string();
+
+                    cpp!([string as "std::string*"] { delete string; });
+
+                    converted
+                }
+            }
+        }
+    }
+
     /// Make all the PDFs in this set.
     pub fn mk_pdfs(&self) -> Vec<Pdf> {
         cfg_if! {
@@ -517,5 +543,7 @@ mod test {
         assert!(matches!(pdf_set.entry("Particle"), Some(value) if value == "2212"));
         assert!(matches!(pdf_set.entry("Flavors"), Some(value)
             if value == "[-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 22]"));
+
+        assert_eq!(pdf_set.error_type(), "replicas");
     }
 }
