@@ -1,6 +1,6 @@
 [package]
 name = "lhapdf"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Christopher Schwan <handgranaten-herbert@posteo.de>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
