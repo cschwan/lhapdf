@@ -1,4 +1,5 @@
 [![Rust](https://github.com/cschwan/lhapdf/workflows/Rust/badge.svg)](https://github.com/cschwan/lhapdf/actions?query=workflow%3ARust)
+[![codecov](https://codecov.io/gh/cschwan/lhapdf/branch/cxx/graph/badge.svg)](https://codecov.io/gh/cschwan/lhapdf)
 [![Documentation](https://docs.rs/lhapdf/badge.svg)](https://docs.rs/lhapdf)
 [![crates.io](https://img.shields.io/crates/v/lhapdf.svg)](https://crates.io/crates/lhapdf)
 
