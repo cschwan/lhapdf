@@ -219,16 +219,11 @@ impl PdfSet {
     }
 
     /// Make all the PDFs in this set.
-    ///
-    /// # Errors
-    ///
-    /// TODO
-    pub fn mk_pdfs(&self) -> Result<Vec<Pdf>> {
+    pub fn mk_pdfs(&self) -> Vec<Pdf> {
         (0..i32::try_from(self.ptr.size()).unwrap_or_else(|_| unreachable!()))
-            .map(|member| {
-                ffi::pdf_with_set_and_member(&self.ptr, member)
-                    .map(|ptr| Pdf { ptr })
-                    .map_err(|exc| LhapdfError { exc })
+            .map(|member| Pdf {
+                ptr: ffi::pdf_with_set_and_member(&self.ptr, member)
+                    .unwrap_or_else(|_| unreachable!()),
             })
             .collect()
     }
