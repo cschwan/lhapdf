@@ -306,6 +306,15 @@ mod test {
     }
 
     #[test]
+    fn debug_pdf() -> Result<()> {
+        let pdf = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?;
+
+        assert_eq!(format!("{:?}", pdf), "Pdf { lhaid: 324900 }");
+
+        Ok(())
+    }
+
+    #[test]
     fn check_pdf() -> Result<()> {
         let pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?;
         let pdf_1 = Pdf::with_lhaid(324900)?;
@@ -322,6 +331,18 @@ mod test {
         assert_ne!(value_0, 0.0);
         assert_eq!(value_0, value_1);
 
+        assert_eq!(
+            Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 10000)
+                .unwrap_err()
+                .to_string(),
+            "PDF NNPDF31_nlo_as_0118_luxqed/10000 is out of the member range of set NNPDF31_nlo_as_0118_luxqed"
+        );
+
+        assert_eq!(
+            Pdf::with_lhaid(0).unwrap_err().to_string(),
+            "Info file not found for PDF set ''"
+        );
+
         Ok(())
     }
 
@@ -332,8 +353,49 @@ mod test {
         assert!(matches!(pdf_set.entry("Particle"), Some(value) if value == "2212"));
         assert!(matches!(pdf_set.entry("Flavors"), Some(value)
             if value == "[-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 22]"));
+        assert_eq!(pdf_set.entry("idontexist"), None);
 
         assert_eq!(pdf_set.error_type(), "replicas");
+
+        assert_eq!(
+            PdfSet::new("IDontExist").unwrap_err().to_string(),
+            "Info file not found for PDF set 'IDontExist'"
+        );
+
+        assert_eq!(pdf_set.mk_pdfs().len(), 101);
+
+        let uncertainty = pdf_set.uncertainty(&[0.0; 101], 68.268949213709, false);
+
+        assert_eq!(uncertainty.central, 0.0);
+        assert_eq!(uncertainty.central, 0.0);
+        assert_eq!(uncertainty.errplus, 0.0);
+        assert_eq!(uncertainty.errminus, 0.0);
+        assert_eq!(uncertainty.errsymm, 0.0);
+        //assert_eq!(uncertainty.scale, 1.0);
+        assert_eq!(uncertainty.errplus_pdf, 0.0);
+        assert_eq!(uncertainty.errminus_pdf, 0.0);
+        assert_eq!(uncertainty.errsymm_pdf, 0.0);
+        assert_eq!(uncertainty.err_par, 0.0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn debug_pdf_set() -> Result<()> {
+        let pdf_set = PdfSet::new("NNPDF31_nlo_as_0118_luxqed")?;
+
+        assert_eq!(format!("{:?}", pdf_set), "PdfSet { lhaid: 324900 }");
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_pdf_pdfset() -> Result<()> {
+        let pdf_set0 = PdfSet::new("NNPDF31_nlo_as_0118_luxqed")?;
+        let pdf_set1 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?.set();
+
+        assert_eq!(pdf_set0.entry("Particle"), pdf_set1.entry("Particle"));
+        assert_eq!(pdf_set0.entry("NumMembers"), pdf_set1.entry("NumMembers"));
 
         Ok(())
     }
