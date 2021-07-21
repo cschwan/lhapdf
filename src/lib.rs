@@ -6,6 +6,7 @@
 
 use cxx::{let_cxx_string, Exception, UniquePtr};
 use std::convert::TryFrom;
+use std::fmt::{self, Formatter};
 use std::result;
 use thiserror::Error;
 
@@ -45,12 +46,14 @@ mod ffi {
 
         fn alphasQ2(self: &PDF, q2: f64) -> Result<f64>;
         fn xfxQ2(self: &PDF, id: i32, x: f64, q2: f64) -> Result<f64>;
+        fn lhapdfID(self: &PDF) -> i32;
 
         type PDFSet;
 
         fn has_key(self: &PDFSet, key: &CxxString) -> bool;
         fn get_entry(self: &PDFSet, key: &CxxString) -> &'static CxxString;
         fn size(self: &PDFSet) -> usize;
+        fn lhapdfID(self: &PDFSet) -> i32;
 
         include!("lhapdf/include/wrappers.hpp");
 
@@ -126,6 +129,14 @@ pub struct Pdf {
     ptr: UniquePtr<ffi::PDF>,
 }
 
+impl fmt::Debug for Pdf {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("Pdf")
+            .field("lhaid", &self.ptr.lhapdfID())
+            .finish()
+    }
+}
+
 impl Pdf {
     /// Constructor. Create a new PDF with the given `lhaid` ID code.
     ///
@@ -185,6 +196,14 @@ unsafe impl Sync for Pdf {}
 /// Class for PDF set metadata and manipulation.
 pub struct PdfSet {
     ptr: UniquePtr<ffi::PDFSet>,
+}
+
+impl fmt::Debug for PdfSet {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("PdfSet")
+            .field("lhaid", &self.ptr.lhapdfID())
+            .finish()
+    }
 }
 
 impl PdfSet {
