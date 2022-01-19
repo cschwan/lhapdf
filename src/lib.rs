@@ -231,6 +231,40 @@ impl Pdf {
             }
         }
     }
+
+    /// Minimum valid x value for this PDF.
+    pub fn x_max(&self) -> f64 {
+        cfg_if! {
+            if #[cfg(not(feature = "docs-only"))] {
+                let self_ptr = self.ptr;
+
+                unsafe {
+                    cpp!([self_ptr as "LHAPDF::PDF *"] -> f64 as "double" {
+                        return self_ptr->xMax();
+                    })
+                }
+            } else {
+                1.0
+            }
+        }
+    }
+
+    /// Maximum valid x value for this PDF.
+    pub fn x_min(&self) -> f64 {
+        cfg_if! {
+            if #[cfg(not(feature = "docs-only"))] {
+                let self_ptr = self.ptr;
+
+                unsafe {
+                    cpp!([self_ptr as "LHAPDF::PDF *"] -> f64 as "double" {
+                        return self_ptr->xMin();
+                    })
+                }
+            } else {
+                0.0
+            }
+        }
+    }
 }
 
 unsafe impl Send for Pdf {}

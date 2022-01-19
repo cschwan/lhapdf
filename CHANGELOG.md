@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added methods `Pdf::x_max` and `Pdf::x_min`
+
 ## [0.1.10] - 18/03/2021
 
 - added method `PdfSet::error_type`
