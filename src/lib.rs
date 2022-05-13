@@ -47,6 +47,8 @@ mod ffi {
         fn alphasQ2(self: &PDF, q2: f64) -> Result<f64>;
         fn xfxQ2(self: &PDF, id: i32, x: f64, q2: f64) -> Result<f64>;
         fn lhapdfID(self: &PDF) -> i32;
+        fn xMin(self: Pin<&mut PDF>) -> f64;
+        fn xMax(self: Pin<&mut PDF>) -> f64;
 
         type PDFSet;
 
@@ -202,6 +204,18 @@ impl Pdf {
             ptr: ffi::pdfset_from_pdf(&self.ptr),
         }
     }
+
+    /// Minimum valid x value for this PDF.
+    #[must_use]
+    pub fn x_min(&mut self) -> f64 {
+        self.ptr.pin_mut().xMin()
+    }
+
+    /// Maximum valid x value for this PDF.
+    #[must_use]
+    pub fn x_max(&mut self) -> f64 {
+        self.ptr.pin_mut().xMax()
+    }
 }
 
 unsafe impl Send for Pdf {}
@@ -330,8 +344,8 @@ mod test {
 
     #[test]
     fn check_pdf() -> Result<()> {
-        let pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?;
-        let pdf_1 = Pdf::with_lhaid(324900)?;
+        let mut pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?;
+        let mut pdf_1 = Pdf::with_lhaid(324900)?;
 
         let value_0 = pdf_0.xfx_q2(2, 0.5, 90.0 * 90.0);
         let value_1 = pdf_1.xfx_q2(2, 0.5, 90.0 * 90.0);
@@ -356,6 +370,11 @@ mod test {
             Pdf::with_lhaid(0).unwrap_err().to_string(),
             "Info file not found for PDF set ''"
         );
+
+        assert_eq!(pdf_0.x_min(), 1e-9);
+        assert_eq!(pdf_0.x_max(), 1.0);
+        assert_eq!(pdf_1.x_min(), 1e-9);
+        assert_eq!(pdf_1.x_max(), 1.0);
 
         Ok(())
     }
