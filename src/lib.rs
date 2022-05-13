@@ -58,6 +58,7 @@ mod ffi {
         include!("lhapdf/include/wrappers.hpp");
 
         fn pdf_with_setname_and_member(setname: &CxxString, member: i32) -> Result<UniquePtr<PDF>>;
+        fn pdf_with_setname_and_nmem(setname: &CxxString) -> Result<UniquePtr<PDF>>;
         fn pdf_with_set_and_member(set: &PDFSet, member: i32) -> Result<UniquePtr<PDF>>;
         fn pdf_with_lhaid(lhaid: i32) -> Result<UniquePtr<PDF>>;
         fn pdfset_new(setname: &CxxString) -> Result<UniquePtr<PDFSet>>;
@@ -157,6 +158,19 @@ impl Pdf {
     pub fn with_setname_and_member(setname: &str, member: i32) -> Result<Self> {
         let_cxx_string!(cxx_setname = setname.to_string());
         ffi::pdf_with_setname_and_member(&cxx_setname, member)
+            .map(|ptr| Self { ptr })
+            .map_err(|exc| LhapdfError { exc })
+    }
+
+    /// Constructor. Create a new PDF with the given string, which denotes the PDF set and possibly
+    /// also a member number separated by a slash `/` in the string.
+    ///
+    /// # Errors
+    ///
+    /// TODO
+    pub fn with_setname_and_nmem(setname_nmem: &str) -> Result<Self> {
+        let_cxx_string!(cxx_setname = setname_nmem.to_string());
+        ffi::pdf_with_setname_and_nmem(&cxx_setname)
             .map(|ptr| Self { ptr })
             .map_err(|exc| LhapdfError { exc })
     }
@@ -342,6 +356,26 @@ mod test {
             Pdf::with_lhaid(0).unwrap_err().to_string(),
             "Info file not found for PDF set ''"
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_setname_and_nmem() -> Result<()> {
+        let pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 1)?;
+        let pdf_1 = Pdf::with_setname_and_nmem("NNPDF31_nlo_as_0118_luxqed/1")?;
+
+        let value_0 = pdf_0.xfx_q2(2, 0.5, 90.0 * 90.0);
+        let value_1 = pdf_1.xfx_q2(2, 0.5, 90.0 * 90.0);
+
+        assert_ne!(value_0, 0.0);
+        assert_eq!(value_0, value_1);
+
+        let value_0 = pdf_0.alphas_q2(90.0 * 90.0);
+        let value_1 = pdf_1.alphas_q2(90.0 * 90.0);
+
+        assert_ne!(value_0, 0.0);
+        assert_eq!(value_0, value_1);
 
         Ok(())
     }

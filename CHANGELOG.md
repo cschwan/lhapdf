@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added function `Pdf::with_setname_and_nmem`
+
 ## [0.1.10] - 18/03/2021
 
 - added method `PdfSet::error_type`

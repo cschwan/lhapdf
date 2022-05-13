@@ -26,6 +26,10 @@ inline std::unique_ptr<PDF> pdf_with_set_and_member(
     return pdf_with_setname_and_member(set.name(), member);
 }
 
+inline std::unique_ptr<PDF> pdf_with_setname_and_nmem(std::string const& setname_nmem) {
+    return std::unique_ptr<PDF>(mkPDF(setname_nmem));
+}
+
 inline std::unique_ptr<PDF> pdf_with_lhaid(std::int32_t lhaid) {
     return std::unique_ptr<PDF>(mkPDF(lhaid));
 }
