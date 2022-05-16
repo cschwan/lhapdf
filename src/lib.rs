@@ -11,6 +11,9 @@ use thiserror::Error;
 
 #[cxx::bridge(namespace = "LHAPDF")]
 mod ffi {
+    // The type `PdfUncertainty` must be separate from the one defined in the C++ namespace LHAPDF
+    // because it differs (at least) from LHAPDF 6.4.x to 6.5.x
+
     /// Structure for storage of uncertainty info calculated over a PDF error set.
     struct PdfUncertainty {
         /// The central value.
@@ -74,7 +77,7 @@ mod ffi {
             values: &[f64],
             cl: f64,
             alternative: bool,
-        ) -> PdfUncertainty;
+        ) -> Result<PdfUncertainty>;
     }
 }
 
@@ -309,8 +312,13 @@ impl PdfSet {
     /// is available. The parameter variation uncertainties are computed from the last `2*n`
     /// members of the set, with `n` the number of parameters.
     #[must_use]
-    pub fn uncertainty(&self, values: &[f64], cl: f64, alternative: bool) -> PdfUncertainty {
-        ffi::pdf_uncertainty(&self.ptr, values, cl, alternative)
+    pub fn uncertainty(
+        &self,
+        values: &[f64],
+        cl: f64,
+        alternative: bool,
+    ) -> Result<PdfUncertainty> {
+        ffi::pdf_uncertainty(&self.ptr, values, cl, alternative).map_err(|exc| LhapdfError { exc })
     }
 }
 

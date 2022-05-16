@@ -63,6 +63,7 @@ inline PdfUncertainty pdf_uncertainty(
     std::vector<double> const vector(values.begin(), values.end());
     auto const uncertainty = pdfset.uncertainty(vector, cl, alternative);
 
+    // convert the C++ `PDFUncertainty` to Rust's `PdfUncertainty`
     PdfUncertainty result;
     result.central = uncertainty.central;
     result.errplus = uncertainty.errplus;
