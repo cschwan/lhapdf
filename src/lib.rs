@@ -437,7 +437,7 @@ mod test {
 
         assert_eq!(pdf_set.mk_pdfs().len(), 101);
 
-        let uncertainty = pdf_set.uncertainty(&[0.0; 101], 68.268949213709, false);
+        let uncertainty = pdf_set.uncertainty(&[0.0; 101], 68.268949213709, false)?;
 
         assert_eq!(uncertainty.central, 0.0);
         assert_eq!(uncertainty.central, 0.0);
