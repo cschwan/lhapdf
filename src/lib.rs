@@ -1,6 +1,5 @@
 #![warn(clippy::all, clippy::cargo, clippy::nursery, clippy::pedantic)]
 #![warn(missing_docs)]
-#![allow(clippy::use_self)] // TODO: remove this line
 
 //! (Unofficial) Rust wrapper for the [LHAPDF](https://lhapdf.hepforge.org) C++ library.
 
@@ -236,7 +235,10 @@ impl fmt::Debug for PdfSet {
 
 impl PdfSet {
     /// Constructor from a set name.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// If the PDF set with the specified name was not found an error is returned.
     pub fn new(setname: &str) -> Result<Self> {
         let_cxx_string!(cxx_setname = setname);
 
@@ -258,6 +260,7 @@ impl PdfSet {
     }
 
     /// Get the type of PDF errors in this set (replicas, symmhessian, hessian, custom, etc.).
+    #[must_use]
     pub fn error_type(&self) -> String {
         let_cxx_string!(string = "");
 
@@ -266,6 +269,7 @@ impl PdfSet {
     }
 
     /// Make all the PDFs in this set.
+    #[must_use]
     pub fn mk_pdfs(&self) -> Vec<Pdf> {
         (0..i32::try_from(self.ptr.size()).unwrap_or_else(|_| unreachable!()))
             .map(|member| Pdf {
