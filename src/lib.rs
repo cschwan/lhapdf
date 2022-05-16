@@ -88,6 +88,9 @@ pub struct LhapdfError {
     exc: Exception,
 }
 
+/// CL percentage for a Gaussian 1-sigma.
+pub const CL_1_SIGMA: f64 = 68.268_949_213_708_58;
+
 /// Type definition for results with an [`LhapdfError`].
 pub type Result<T> = result::Result<T, LhapdfError>;
 
