@@ -19,7 +19,7 @@ jobs:
     - name: Install LHAPDF
       run: |
         echo "LHAPDF=LHAPDF-6.3.0" >> $GITHUB_ENV
-        wget 'https://lhapdf.hepforge.org/downloads/?f=${LHAPDF}.tar.gz' -O ${LHAPDF}.tar.gz
+        wget "https://lhapdf.hepforge.org/downloads/?f=${LHAPDF}.tar.gz" -O ${LHAPDF}.tar.gz
         tar xzf ${LHAPDF}.tar.gz
         cd ${LHAPDF}
         ./configure --prefix=${HOME}/prefix
