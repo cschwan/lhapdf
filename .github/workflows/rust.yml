@@ -17,8 +17,9 @@ jobs:
       with:
         python-version: 3.7
     - name: Install LHAPDF
+      env:
+        LHAPDF: LHAPDF-6.3.0
       run: |
-        echo "LHAPDF=LHAPDF-6.3.0" >> $GITHUB_ENV
         wget "https://lhapdf.hepforge.org/downloads/?f=${LHAPDF}.tar.gz" -O ${LHAPDF}.tar.gz
         tar xzf ${LHAPDF}.tar.gz
         cd ${LHAPDF}
