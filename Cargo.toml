@@ -11,11 +11,11 @@ categories = ["science"]
 description = "(Unofficial) Rust bindings for the LHAPDF C++ library"
 
 [dependencies]
-cfg-if = "0.1"
-cpp = "0.5"
+cxx = "1.0"
+thiserror = "1.0"
 
 [build-dependencies]
-cpp_build = "0.5"
+cxx-build = "1.0"
 pkg-config = "0.3"
 
 [features]

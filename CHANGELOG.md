@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added function `Pdf::with_setname_and_nmem`
+- changed return type of `PdfSet::uncertainty` to `Result<_>`
+- added constant `CL_1_SIGMA`
+
 ## [0.1.11] - DD/01/2022
 
 - added methods `Pdf::x_max` and `Pdf::x_min`

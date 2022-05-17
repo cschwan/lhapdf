@@ -3,433 +3,293 @@
 
 //! (Unofficial) Rust wrapper for the [LHAPDF](https://lhapdf.hepforge.org) C++ library.
 
-#[macro_use]
-extern crate cfg_if;
+use cxx::{let_cxx_string, Exception, UniquePtr};
+use std::convert::TryFrom;
+use std::fmt::{self, Formatter};
+use std::result;
+use thiserror::Error;
 
-use std::ffi::c_void;
+#[cxx::bridge(namespace = "LHAPDF")]
+mod ffi {
+    // The type `PdfUncertainty` must be separate from the one defined in the C++ namespace LHAPDF
+    // because it differs (at least) from LHAPDF 6.4.x to 6.5.x
 
-cfg_if! {
-    if #[cfg(not(feature = "docs-only"))] {
-        #[macro_use]
-        extern crate cpp;
+    /// Structure for storage of uncertainty info calculated over a PDF error set.
+    struct PdfUncertainty {
+        /// The central value.
+        pub central: f64,
+        /// The unsymmetric error in positive direction.
+        pub errplus: f64,
+        /// The unsymmetric error in negative direction.
+        pub errminus: f64,
+        /// The symmetric error.
+        pub errsymm: f64,
+        /// The scale factor needed to convert between the PDF set's default confidence level and
+        /// the requested confidence level.
+        pub scale: f64,
+        /// Extra variable for separate PDF and parameter variation errors with combined sets.
+        pub errplus_pdf: f64,
+        /// Extra variable for separate PDF and parameter variation errors with combined sets.
+        pub errminus_pdf: f64,
+        /// Extra variable for separate PDF and parameter variation errors with combined sets.
+        pub errsymm_pdf: f64,
+        /// Extra variable for separate PDF and parameter variation errors with combined sets.
+        pub err_par: f64,
+    }
 
-        use std::ffi::{CStr, CString};
-        use std::os::raw::c_char;
+    unsafe extern "C++" {
+        include!("lhapdf/include/lhapdf.hpp");
 
-        cpp! {{
-            #include <cstring>
-            #include <cstddef>
-            #include <LHAPDF/LHAPDF.h>
-        }}
-    } else {
-        use std::ptr;
+        fn availablePDFSets() -> &'static CxxVector<CxxString>;
+        fn setVerbosity(verbosity: i32);
+        fn verbosity() -> i32;
+
+        type PDF;
+
+        fn alphasQ2(self: &PDF, q2: f64) -> Result<f64>;
+        fn xfxQ2(self: &PDF, id: i32, x: f64, q2: f64) -> Result<f64>;
+        fn lhapdfID(self: &PDF) -> i32;
+        fn xMin(self: Pin<&mut PDF>) -> f64;
+        fn xMax(self: Pin<&mut PDF>) -> f64;
+
+        type PDFSet;
+
+        fn has_key(self: &PDFSet, key: &CxxString) -> bool;
+        fn get_entry(self: &PDFSet, key: &CxxString) -> &'static CxxString;
+        fn size(self: &PDFSet) -> usize;
+        fn lhapdfID(self: &PDFSet) -> i32;
+    }
+
+    unsafe extern "C++" {
+        include!("lhapdf/include/wrappers.hpp");
+
+        fn pdf_with_setname_and_member(setname: &CxxString, member: i32) -> Result<UniquePtr<PDF>>;
+        fn pdf_with_setname_and_nmem(setname: &CxxString) -> Result<UniquePtr<PDF>>;
+        fn pdf_with_set_and_member(set: &PDFSet, member: i32) -> Result<UniquePtr<PDF>>;
+        fn pdf_with_lhaid(lhaid: i32) -> Result<UniquePtr<PDF>>;
+        fn pdfset_new(setname: &CxxString) -> Result<UniquePtr<PDFSet>>;
+        fn pdfset_from_pdf(pdf: &PDF) -> UniquePtr<PDFSet>;
+
+        fn lookup_pdf_setname(lhaid: i32, setname: Pin<&mut CxxString>);
+        fn lookup_pdf_memberid(lhaid: i32) -> i32;
+        fn get_pdfset_error_type(set: &PDFSet, setname: Pin<&mut CxxString>);
+
+        fn pdf_uncertainty(
+            pdfset: &PDFSet,
+            values: &[f64],
+            cl: f64,
+            alternative: bool,
+        ) -> Result<PdfUncertainty>;
     }
 }
+
+/// Error struct that wraps all exceptions thrown by the LHAPDF library.
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub struct LhapdfError {
+    exc: Exception,
+}
+
+/// CL percentage for a Gaussian 1-sigma.
+pub const CL_1_SIGMA: f64 = 68.268_949_213_708_58;
+
+/// Type definition for results with an [`LhapdfError`].
+pub type Result<T> = result::Result<T, LhapdfError>;
+
+pub use ffi::PdfUncertainty;
 
 /// Get the names of all available PDF sets in the search path.
 #[must_use]
 pub fn available_pdf_sets() -> Vec<String> {
-    cfg_if! {
-        if #[cfg(feature = "docs-only")] {
-            vec![]
-        } else {
-            let pdfs = unsafe {
-                cpp!([] -> usize as "size_t" {
-                    return static_cast<unsigned> (LHAPDF::availablePDFSets().size());
-                })
-            };
-
-            let mut pdf_sets: Vec<String> = Vec::with_capacity(pdfs);
-
-            for i in 0..pdfs {
-                let cstr_ptr = unsafe {
-                    cpp!([i as "size_t"] -> *const c_char as "const char *" {
-                        return LHAPDF::availablePDFSets().at(i).c_str();
-                    })
-                };
-                pdf_sets.push(
-                    unsafe { CStr::from_ptr(cstr_ptr) }
-                        .to_str()
-                        .unwrap()
-                        .to_string(),
-                );
-            }
-
-            pdf_sets
-        }
-    }
+    ffi::availablePDFSets()
+        .iter()
+        .map(|s| s.to_string_lossy().into_owned())
+        .collect()
 }
 
-/// Look up a PDF set name and member ID by the LHAPDF ID code. The set name and member ID are
-/// returned as a tuple in an `Option`. If lookup fails, `None` is returned.
+/// Convert an LHAID to an LHAPDF set name and member ID.
 #[must_use]
 pub fn lookup_pdf(lhaid: i32) -> Option<(String, i32)> {
-    cfg_if! {
-        if #[cfg(feature = "docs-only")] {
-            None
-        } else {
-            let pair = unsafe {
-                cpp!([lhaid as "int"] -> *const c_void as "const void *" {
-                    return new std::pair<std::string, int>(LHAPDF::lookupPDF(lhaid));
-                })
-            };
+    let_cxx_string!(cxx_setname = "");
+    ffi::lookup_pdf_setname(lhaid, cxx_setname.as_mut());
 
-            let set_name = unsafe { CStr::from_ptr(
-                cpp!([pair as "std::pair<std::string, int>*"] -> *const c_char as "const char *" {
-                    return pair->first.c_str();
-                }))
-            }.to_str().unwrap().to_string();
-            let member_id = unsafe {
-                cpp!([pair as "std::pair<std::string, int>*"] -> i32 as "int" {
-                    return pair->second;
-                })
-            };
+    let setname = cxx_setname.to_string_lossy();
+    let memberid = ffi::lookup_pdf_memberid(lhaid);
 
-            unsafe {
-                cpp!([pair as "std::pair<std::string, int>*"] -> () as "void" {
-                    return delete pair;
-                })
-            };
-
-            if (set_name == String::new()) && (member_id == -1) {
-                return None;
-            }
-
-            Some((set_name, member_id))
-        }
+    if (setname == "") && (memberid == -1) {
+        None
+    } else {
+        Some((setname.to_string(), memberid))
     }
 }
 
 /// Convenient way to set the verbosity level.
 pub fn set_verbosity(verbosity: i32) {
-    cfg_if! {
-        if #[cfg(feature = "docs-only")] {
-        } else {
-            unsafe {
-                cpp!([verbosity as "int"] { LHAPDF::setVerbosity(verbosity); });
-            }
-        }
-    }
+    ffi::setVerbosity(verbosity);
 }
 
 /// Convenient way to get the current verbosity level.
 #[must_use]
 pub fn verbosity() -> i32 {
-    cfg_if! {
-        if #[cfg(feature = "docs-only")] {
-            -1
-        } else {
-            unsafe {
-                cpp!([] -> i32 as "int" { return LHAPDF::verbosity(); })
-            }
-        }
-    }
+    ffi::verbosity()
 }
 
 /// Wrapper to an LHAPDF object of the type `LHAPDF::PDF`.
 pub struct Pdf {
-    ptr: *mut c_void,
+    ptr: UniquePtr<ffi::PDF>,
+}
+
+impl fmt::Debug for Pdf {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("Pdf")
+            .field("lhaid", &self.ptr.lhapdfID())
+            .finish()
+    }
 }
 
 impl Pdf {
-    /// Constructor. Create a new PDF with the given PDF `setname` and `member` ID.
-    #[must_use]
-    pub fn with_setname_and_member(setname: &str, member: i32) -> Self {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                Self { ptr: ptr::null_mut::<c_void>() }
-            } else {
-                let setname = CString::new(setname).unwrap();
-                let setname_ptr = setname.as_ptr();
-
-                Self {
-                    ptr: unsafe {
-                        cpp!([setname_ptr as "const char *",
-                              member as "int"] -> *mut c_void as "LHAPDF::PDF*" {
-                            return LHAPDF::mkPDF(setname_ptr, member);
-                        })
-                    },
-                }
-            }
-        }
+    /// Constructor. Create a new PDF with the given `lhaid` ID code.
+    ///
+    /// # Errors
+    ///
+    /// TODO
+    pub fn with_lhaid(lhaid: i32) -> Result<Self> {
+        ffi::pdf_with_lhaid(lhaid)
+            .map(|ptr| Self { ptr })
+            .map_err(|exc| LhapdfError { exc })
     }
 
-    /// Constructor. Create a new PDF with the given `lhaid` ID code.
-    #[must_use]
-    pub fn with_lhaid(lhaid: i32) -> Self {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                Self { ptr: ptr::null_mut::<c_void>() }
-            } else {
-                Self {
-                    ptr: unsafe {
-                        cpp!([lhaid as "int"] -> *mut c_void as "LHAPDF::PDF*" {
-                            return LHAPDF::mkPDF(lhaid);
-                        })
-                    },
-                }
-            }
-        }
+    /// Constructor. Create a new PDF with the given PDF `setname` and `member` ID.
+    ///
+    /// # Errors
+    ///
+    /// TODO
+    pub fn with_setname_and_member(setname: &str, member: i32) -> Result<Self> {
+        let_cxx_string!(cxx_setname = setname.to_string());
+        ffi::pdf_with_setname_and_member(&cxx_setname, member)
+            .map(|ptr| Self { ptr })
+            .map_err(|exc| LhapdfError { exc })
+    }
+
+    /// Create a new PDF with the given PDF set name and member ID as a single string.
+    ///
+    /// The format of the `setname_nmem` string is <setname>/<nmem> where <nmem> must be parseable
+    /// as a positive integer. The `/` character is not permitted in set names due to clashes with
+    /// Unix filesystem path syntax.
+    ///
+    /// If no /<nmem> is given, member number 0 will be used.
+    ///
+    /// # Errors
+    ///
+    /// TODO
+    pub fn with_setname_and_nmem(setname_nmem: &str) -> Result<Self> {
+        let_cxx_string!(cxx_setname = setname_nmem.to_string());
+        ffi::pdf_with_setname_and_nmem(&cxx_setname)
+            .map(|ptr| Self { ptr })
+            .map_err(|exc| LhapdfError { exc })
     }
 
     /// Get the PDF `x * f(x)` value at `x` and `q2` for the given PDG ID.
+    ///
+    /// # Panics
+    ///
+    /// If the value of either `x` or `q2` is not within proper boundaries this method will panic.
     #[must_use]
     pub fn xfx_q2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                0.0
-            } else {
-                let self_ptr = self.ptr;
-
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDF *",
-                                   id as "int",
-                                   x as "double",
-                                   q2 as "double"] -> f64 as "double" {
-                        return self_ptr->xfxQ2(id, x, q2);
-                    })
-                }
-            }
-        }
+        self.ptr.xfxQ2(id, x, q2).unwrap()
     }
 
     /// Value of of the strong coupling at `q2` used by this PDF.
+    ///
+    /// # Panics
+    ///
+    /// If the value of `q2` is not within proper boundaries this method will panic.
     #[must_use]
     pub fn alphas_q2(&self, q2: f64) -> f64 {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                0.0
-            } else {
-                let self_ptr = self.ptr;
-
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDF *", q2 as "double"] -> f64 as "double" {
-                        return self_ptr->alphasQ2(q2);
-                    })
-                }
-            }
-        }
+        self.ptr.alphasQ2(q2).unwrap()
     }
 
     /// Get the info class that actually stores and handles the metadata.
     #[must_use]
     pub fn set(&self) -> PdfSet {
-        cfg_if! {
-            if #[cfg(not(feature = "docs-only"))] {
-                let self_ptr = self.ptr;
-
-                PdfSet {
-                    ptr: unsafe {
-                        cpp!([self_ptr as "LHAPDF::PDF *"] -> *mut c_void as "LHAPDF::PDFSet *" {
-                            return &self_ptr->set();
-                        })
-                    },
-                    drop: false,
-                }
-            } else {
-                PdfSet { ptr: ptr::null_mut::<c_void>(), drop: false }
-            }
+        PdfSet {
+            ptr: ffi::pdfset_from_pdf(&self.ptr),
         }
     }
 
     /// Minimum valid x value for this PDF.
-    pub fn x_max(&self) -> f64 {
-        cfg_if! {
-            if #[cfg(not(feature = "docs-only"))] {
-                let self_ptr = self.ptr;
-
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDF *"] -> f64 as "double" {
-                        return self_ptr->xMax();
-                    })
-                }
-            } else {
-                1.0
-            }
-        }
+    #[must_use]
+    pub fn x_min(&mut self) -> f64 {
+        self.ptr.pin_mut().xMin()
     }
 
     /// Maximum valid x value for this PDF.
-    pub fn x_min(&self) -> f64 {
-        cfg_if! {
-            if #[cfg(not(feature = "docs-only"))] {
-                let self_ptr = self.ptr;
-
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDF *"] -> f64 as "double" {
-                        return self_ptr->xMin();
-                    })
-                }
-            } else {
-                0.0
-            }
-        }
+    #[must_use]
+    pub fn x_max(&mut self) -> f64 {
+        self.ptr.pin_mut().xMax()
     }
 }
 
 unsafe impl Send for Pdf {}
 unsafe impl Sync for Pdf {}
 
-impl Drop for Pdf {
-    fn drop(&mut self) {
-        cfg_if! {
-            if #[cfg(not(feature = "docs-only"))] {
-                let self_ptr = self.ptr;
-
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDF *"] -> () as "void" {
-                        delete self_ptr;
-                    });
-                }
-            }
-        }
-    }
-}
-
-/// Structure for storage of uncertainty info calculated over a PDF error set.
-pub struct PdfUncertainty {
-    /// The central value.
-    pub central: f64,
-    /// The unsymmetric error in positive direction.
-    pub errplus: f64,
-    /// The unsymmetric error in negative direction.
-    pub errminus: f64,
-    /// The symmetric error.
-    pub errsymm: f64,
-    /// The scale factor needed to convert between the PDF set's default confidence level and the
-    /// requested confidence level.
-    pub scale: f64,
-    /// Extra variable for separate PDF and parameter variation errors with combined sets.
-    pub errplus_pdf: f64,
-    /// Extra variable for separate PDF and parameter variation errors with combined sets.
-    pub errminus_pdf: f64,
-    /// Extra variable for separate PDF and parameter variation errors with combined sets.
-    pub errsymm_pdf: f64,
-    /// Extra variable for separate PDF and parameter variation errors with combined sets.
-    pub err_par: f64,
-}
-
 /// Class for PDF set metadata and manipulation.
 pub struct PdfSet {
-    ptr: *mut c_void,
-    drop: bool,
+    ptr: UniquePtr<ffi::PDFSet>,
+}
+
+impl fmt::Debug for PdfSet {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("PdfSet")
+            .field("lhaid", &self.ptr.lhapdfID())
+            .finish()
+    }
 }
 
 impl PdfSet {
     /// Constructor from a set name.
-    #[must_use]
-    pub fn new(setname: &str) -> Self {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                Self { ptr: ptr::null_mut::<c_void>(), drop: false }
-            } else {
-                let setname = CString::new(setname).unwrap();
-                let setname_ptr = setname.as_ptr();
+    ///
+    /// # Errors
+    ///
+    /// If the PDF set with the specified name was not found an error is returned.
+    pub fn new(setname: &str) -> Result<Self> {
+        let_cxx_string!(cxx_setname = setname);
 
-                Self {
-                    ptr: unsafe {
-                        cpp!([setname_ptr as "const char *"] -> *mut c_void as "LHAPDF::PDFSet *" {
-                            return new LHAPDF::PDFSet(setname_ptr);
-                        })
-                    },
-                    drop: true
-                }
-            }
-        }
+        ffi::pdfset_new(&cxx_setname)
+            .map(|ptr| Self { ptr })
+            .map_err(|exc| LhapdfError { exc })
     }
 
     /// Retrieve a metadata string by key name.
     #[must_use]
     pub fn entry(&self, key: &str) -> Option<String> {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                None
-            } else {
-                let self_ptr = self.ptr;
-                let key = CString::new(key).unwrap();
-                let key_ptr = key.as_ptr();
+        let_cxx_string!(cxx_key = key);
 
-                unsafe {
-                    let has_key = cpp!([self_ptr as "LHAPDF::PDFSet*", key_ptr as "const char*"] -> bool as "bool" {
-                        return self_ptr->has_key(key_ptr);
-                    });
-
-                    if has_key {
-                        let size = cpp!([self_ptr as "LHAPDF::PDFSet*", key_ptr as "const char*"] -> usize as "std::size_t" {
-                            auto const& value = self_ptr->get_entry(key_ptr);
-                            return value.size();
-                        });
-                        let value_ptr = CString::new(vec![b' '; size]).unwrap().into_raw();
-                        cpp!([self_ptr as "LHAPDF::PDFSet*", key_ptr as "const char*", value_ptr as "char*"] {
-                            auto const& value = self_ptr->get_entry(key_ptr);
-                            std::strncpy(value_ptr, value.c_str(), value.size() + 1);
-                        });
-                        Some(CString::from_raw(value_ptr).into_string().unwrap())
-                    } else {
-                        None
-                    }
-                }
-            }
+        if self.ptr.has_key(&cxx_key) {
+            Some(self.ptr.get_entry(&cxx_key).to_string_lossy().into_owned())
+        } else {
+            None
         }
     }
 
     /// Get the type of PDF errors in this set (replicas, symmhessian, hessian, custom, etc.).
+    #[must_use]
     pub fn error_type(&self) -> String {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                "".to_owned()
-            } else {
-                let self_ptr = self.ptr;
+        let_cxx_string!(string = "");
 
-                unsafe {
-                    let string = cpp!([self_ptr as "LHAPDF::PDFSet*"] -> *mut c_void as "std::string*" {
-                        return new std::string(self_ptr->errorType());
-                    });
-                    let cstr = cpp!([string as "std::string*"] -> *const c_char as "const char*" {
-                        return string->c_str();
-                    });
-
-                    let converted = CStr::from_ptr(cstr).to_str().unwrap().to_string();
-
-                    cpp!([string as "std::string*"] { delete string; });
-
-                    converted
-                }
-            }
-        }
+        ffi::get_pdfset_error_type(&self.ptr, string.as_mut());
+        string.to_string_lossy().into_owned()
     }
 
     /// Make all the PDFs in this set.
+    #[must_use]
     pub fn mk_pdfs(&self) -> Vec<Pdf> {
-        cfg_if! {
-            if #[cfg(feature = "docs-only")] {
-                vec![]
-            } else {
-                let self_ptr = self.ptr;
-                let mut pdfs = vec![];
-
-                unsafe {
-                    let vec = cpp!([self_ptr as "LHAPDF::PDFSet*"] -> *mut c_void as "std::vector<LHAPDF::PDF*>*" {
-                        return new std::vector<LHAPDF::PDF*>(self_ptr->mkPDFs());
-                    });
-                    let size = cpp!([vec as "std::vector<LHAPDF::PDF*>*"] -> usize as "std::size_t" {
-                        return vec->size();
-                    });
-
-                    for index in 0..size {
-                        pdfs.push(Pdf { ptr: cpp!([vec as "std::vector<LHAPDF::PDF*>*", index as "std::size_t"] -> *mut c_void as "LHAPDF::PDF*" {
-                            return vec->at(index);
-                        }) });
-                    }
-
-                    cpp!([vec as "std::vector<LHAPDF::PDF*>*"] -> () as "void" {
-                        delete vec;
-                    });
-                }
-
-                pdfs
-            }
-        }
+        (0..i32::try_from(self.ptr.size()).unwrap_or_else(|_| unreachable!()))
+            .map(|member| Pdf {
+                ptr: ffi::pdf_with_set_and_member(&self.ptr, member)
+                    .unwrap_or_else(|_| unreachable!()),
+            })
+            .collect()
     }
 
     /// Calculate central value and error from vector values with appropriate formulae for this
@@ -438,11 +298,11 @@ impl PdfSet {
     /// Warning: The values vector corresponds to the members of this PDF set and must be ordered
     /// accordingly.
     ///
-    /// In the Hessian approach, the central value is the best-fit "values[0]" and the uncertainty
+    /// In the Hessian approach, the central value is the best-fit "values\[0\]" and the uncertainty
     /// is given by either the symmetric or asymmetric formula using eigenvector PDF sets.
     ///
     /// If the PDF set is given in the form of replicas, by default, the central value is given by
-    /// the mean and is not necessarily "values[0]" for quantities with a non-linear dependence on
+    /// the mean and is not necessarily "values\[0]\" for quantities with a non-linear dependence on
     /// PDFs, while the uncertainty is given by the standard deviation.
     ///
     /// The argument `cl` is used to rescale uncertainties to a particular confidence level (in
@@ -457,76 +317,13 @@ impl PdfSet {
     /// is available. The parameter variation uncertainties are computed from the last `2*n`
     /// members of the set, with `n` the number of parameters.
     #[must_use]
-    pub fn uncertainty(&self, values: &[f64], cl: f64, alternative: bool) -> PdfUncertainty {
-        let mut central = 0.0;
-        let mut errplus = 0.0;
-        let mut errminus = 0.0;
-        let mut errsymm = 0.0;
-        let mut scale = 0.0;
-        let mut errplus_pdf = 0.0;
-        let mut errminus_pdf = 0.0;
-        let mut errsymm_pdf = 0.0;
-        let mut err_par = 0.0;
-
-        cfg_if! {
-            if #[cfg(not(feature = "docs-only"))] {
-                let self_ptr = self.ptr;
-                let values_ptr = values.as_ptr();
-                let values_len = values.len();
-
-                unsafe {
-                    cpp!([self_ptr as "LHAPDF::PDFSet *", values_ptr as "double *",
-                          values_len as "std::size_t", cl as "double", alternative as "bool",
-                          mut central as "double", mut errplus as "double",
-                          mut errminus as "double", mut errsymm as "double", mut scale as "double",
-                          mut errplus_pdf as "double", mut errminus_pdf as "double",
-                          mut errsymm_pdf as "double", mut err_par as "double"] -> () as "void" {
-                        LHAPDF::PDFUncertainty res;
-                        std::vector<double> vec_values(values_ptr, values_ptr + values_len);
-                        self_ptr->uncertainty(res, vec_values, cl, alternative);
-                        central = res.central;
-                        errplus = res.errplus;
-                        errminus = res.errminus;
-                        errsymm = res.errsymm;
-                        scale = res.scale;
-                        errplus_pdf = res.errplus_pdf;
-                        errminus_pdf = res.errminus_pdf;
-                        errsymm_pdf = res.errsymm_pdf;
-                        err_par = res.err_par;
-                    });
-                }
-            }
-        }
-
-        PdfUncertainty {
-            central,
-            errplus,
-            errminus,
-            errsymm,
-            scale,
-            errplus_pdf,
-            errminus_pdf,
-            errsymm_pdf,
-            err_par,
-        }
-    }
-}
-
-impl Drop for PdfSet {
-    fn drop(&mut self) {
-        if self.drop {
-            cfg_if! {
-                 if #[cfg(not(feature = "docs-only"))] {
-                    let self_ptr = self.ptr;
-
-                    unsafe {
-                        cpp!([self_ptr as "LHAPDF::PDFSet *"] -> () as "void" {
-                            delete self_ptr;
-                        })
-                    }
-                }
-            }
-        }
+    pub fn uncertainty(
+        &self,
+        values: &[f64],
+        cl: f64,
+        alternative: bool,
+    ) -> Result<PdfUncertainty> {
+        ffi::pdf_uncertainty(&self.ptr, values, cl, alternative).map_err(|exc| LhapdfError { exc })
     }
 }
 
@@ -535,12 +332,18 @@ mod test {
     use super::*;
 
     #[test]
-    fn check_available_pdf_sets() {
-        let pdf_sets = available_pdf_sets();
+    fn available_pdf_sets() {
+        let pdf_sets = super::available_pdf_sets();
 
         assert!(pdf_sets
             .iter()
             .any(|pdf_set| pdf_set == "NNPDF31_nlo_as_0118_luxqed"));
+    }
+
+    #[test]
+    fn set_verbosity() {
+        super::set_verbosity(0);
+        assert_eq!(verbosity(), 0);
     }
 
     #[test]
@@ -553,9 +356,18 @@ mod test {
     }
 
     #[test]
-    fn check_pdf() {
-        let pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0);
-        let pdf_1 = Pdf::with_lhaid(324900);
+    fn debug_pdf() -> Result<()> {
+        let pdf = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?;
+
+        assert_eq!(format!("{:?}", pdf), "Pdf { lhaid: 324900 }");
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_pdf() -> Result<()> {
+        let mut pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?;
+        let mut pdf_1 = Pdf::with_lhaid(324900)?;
 
         let value_0 = pdf_0.xfx_q2(2, 0.5, 90.0 * 90.0);
         let value_1 = pdf_1.xfx_q2(2, 0.5, 90.0 * 90.0);
@@ -568,16 +380,98 @@ mod test {
 
         assert_ne!(value_0, 0.0);
         assert_eq!(value_0, value_1);
+
+        assert_eq!(
+            Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 10000)
+                .unwrap_err()
+                .to_string(),
+            "PDF NNPDF31_nlo_as_0118_luxqed/10000 is out of the member range of set NNPDF31_nlo_as_0118_luxqed"
+        );
+
+        assert_eq!(
+            Pdf::with_lhaid(0).unwrap_err().to_string(),
+            "Info file not found for PDF set ''"
+        );
+
+        assert_eq!(pdf_0.x_min(), 1e-9);
+        assert_eq!(pdf_0.x_max(), 1.0);
+        assert_eq!(pdf_1.x_min(), 1e-9);
+        assert_eq!(pdf_1.x_max(), 1.0);
+
+        Ok(())
     }
 
     #[test]
-    fn check_pdf_set() {
-        let pdf_set = PdfSet::new("NNPDF31_nlo_as_0118_luxqed");
+    fn check_setname_and_nmem() -> Result<()> {
+        let pdf_0 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 1)?;
+        let pdf_1 = Pdf::with_setname_and_nmem("NNPDF31_nlo_as_0118_luxqed/1")?;
+
+        let value_0 = pdf_0.xfx_q2(2, 0.5, 90.0 * 90.0);
+        let value_1 = pdf_1.xfx_q2(2, 0.5, 90.0 * 90.0);
+
+        assert_ne!(value_0, 0.0);
+        assert_eq!(value_0, value_1);
+
+        let value_0 = pdf_0.alphas_q2(90.0 * 90.0);
+        let value_1 = pdf_1.alphas_q2(90.0 * 90.0);
+
+        assert_ne!(value_0, 0.0);
+        assert_eq!(value_0, value_1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_pdf_set() -> Result<()> {
+        let pdf_set = PdfSet::new("NNPDF31_nlo_as_0118_luxqed")?;
 
         assert!(matches!(pdf_set.entry("Particle"), Some(value) if value == "2212"));
         assert!(matches!(pdf_set.entry("Flavors"), Some(value)
             if value == "[-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 22]"));
+        assert_eq!(pdf_set.entry("idontexist"), None);
 
         assert_eq!(pdf_set.error_type(), "replicas");
+
+        assert_eq!(
+            PdfSet::new("IDontExist").unwrap_err().to_string(),
+            "Info file not found for PDF set 'IDontExist'"
+        );
+
+        assert_eq!(pdf_set.mk_pdfs().len(), 101);
+
+        let uncertainty = pdf_set.uncertainty(&[0.0; 101], 68.268949213709, false)?;
+
+        assert_eq!(uncertainty.central, 0.0);
+        assert_eq!(uncertainty.central, 0.0);
+        assert_eq!(uncertainty.errplus, 0.0);
+        assert_eq!(uncertainty.errminus, 0.0);
+        assert_eq!(uncertainty.errsymm, 0.0);
+        //assert_eq!(uncertainty.scale, 1.0);
+        assert_eq!(uncertainty.errplus_pdf, 0.0);
+        assert_eq!(uncertainty.errminus_pdf, 0.0);
+        assert_eq!(uncertainty.errsymm_pdf, 0.0);
+        assert_eq!(uncertainty.err_par, 0.0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn debug_pdf_set() -> Result<()> {
+        let pdf_set = PdfSet::new("NNPDF31_nlo_as_0118_luxqed")?;
+
+        assert_eq!(format!("{:?}", pdf_set), "PdfSet { lhaid: 324900 }");
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_pdf_pdfset() -> Result<()> {
+        let pdf_set0 = PdfSet::new("NNPDF31_nlo_as_0118_luxqed")?;
+        let pdf_set1 = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0)?.set();
+
+        assert_eq!(pdf_set0.entry("Particle"), pdf_set1.entry("Particle"));
+        assert_eq!(pdf_set0.entry("NumMembers"), pdf_set1.entry("NumMembers"));
+
+        Ok(())
     }
 }
