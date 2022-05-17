@@ -418,6 +418,13 @@ mod test {
         assert_ne!(value_0, 0.0);
         assert_eq!(value_0, value_1);
 
+        assert_eq!(
+            Pdf::with_setname_and_nmem("foobar/0")
+                .unwrap_err()
+                .to_string(),
+            "Info file not found for PDF set 'foobar'"
+        );
+
         Ok(())
     }
 
