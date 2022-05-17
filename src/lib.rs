@@ -38,7 +38,7 @@ mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("LHAPDF/LHAPDF.h");
+        include!("lhapdf/include/lhapdf.hpp");
 
         fn availablePDFSets() -> &'static CxxVector<CxxString>;
         fn setVerbosity(verbosity: i32);
@@ -58,7 +58,9 @@ mod ffi {
         fn get_entry(self: &PDFSet, key: &CxxString) -> &'static CxxString;
         fn size(self: &PDFSet) -> usize;
         fn lhapdfID(self: &PDFSet) -> i32;
+    }
 
+    unsafe extern "C++" {
         include!("lhapdf/include/wrappers.hpp");
 
         fn pdf_with_setname_and_member(setname: &CxxString, member: i32) -> Result<UniquePtr<PDF>>;

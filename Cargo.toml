@@ -17,3 +17,9 @@ thiserror = "1.0"
 [build-dependencies]
 cxx-build = "1.0"
 pkg-config = "0.3"
+
+[features]
+docs-only = []
+
+[package.metadata.docs.rs]
+features = [ "docs-only" ]

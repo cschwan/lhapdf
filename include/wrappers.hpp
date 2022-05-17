@@ -1,7 +1,12 @@
 #ifndef WRAPPERS_HPP
 #define WRAPPERS_HPP
 
+#ifdef FAKE_WRAPPERS
+#include "fake-lhapdf.hpp"
+#else
 #include <LHAPDF/LHAPDF.h>
+#endif
+
 #include <lhapdf/src/lib.rs.h>
 #include <rust/cxx.h>
 
@@ -11,6 +16,47 @@
 #include <vector>
 
 namespace LHAPDF {
+
+#ifdef FAKE_WRAPPERS
+
+inline std::unique_ptr<PDF> pdf_with_setname_and_member(std::string const&, std::int32_t) {
+        return std::unique_ptr<PDF>();
+}
+
+inline std::unique_ptr<PDF> pdf_with_set_and_member(PDFSet const&, std::int32_t) {
+        return std::unique_ptr<PDF>();
+}
+
+inline std::unique_ptr<PDF> pdf_with_setname_and_nmem(std::string const&) {
+        return std::unique_ptr<PDF>();
+}
+
+inline std::unique_ptr<PDF> pdf_with_lhaid(std::int32_t) {
+        return std::unique_ptr<PDF>();
+}
+
+inline std::unique_ptr<PDFSet> pdfset_new(std::string const&) {
+        return std::unique_ptr<PDFSet>();
+}
+
+inline std::unique_ptr<PDFSet> pdfset_from_pdf(PDF const&) {
+        return std::unique_ptr<PDFSet>();
+}
+
+inline void lookup_pdf_setname(std::int32_t, std::string&) {}
+
+inline std::int32_t lookup_pdf_memberid(std::int32_t) {
+        return 0;
+}
+
+inline void get_pdfset_error_type(PDFSet const&, std::string&) {}
+
+inline PdfUncertainty pdf_uncertainty(PDFSet const&, rust::Slice<double const>, double, bool) {
+        PdfUncertainty result;
+            return result;
+}
+
+#else
 
 inline std::unique_ptr<PDF> pdf_with_setname_and_member(
     std::string const& setname,
@@ -77,6 +123,8 @@ inline PdfUncertainty pdf_uncertainty(
 
     return result;
 }
+
+#endif
 
 }
 
