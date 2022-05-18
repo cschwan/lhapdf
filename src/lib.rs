@@ -9,7 +9,7 @@ use std::fmt::{self, Formatter};
 use std::result;
 use thiserror::Error;
 
-#[cxx::bridge(namespace = "LHAPDF")]
+#[cxx::bridge]
 mod ffi {
     // The type `PdfUncertainty` must be separate from the one defined in the C++ namespace LHAPDF
     // because it differs (at least) from LHAPDF 6.4.x to 6.5.x
@@ -37,6 +37,7 @@ mod ffi {
         pub err_par: f64,
     }
 
+    #[namespace = "LHAPDF"]
     unsafe extern "C++" {
         include!("lhapdf/include/lhapdf.hpp");
 

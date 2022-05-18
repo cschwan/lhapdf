@@ -15,93 +15,96 @@
 #include <string>
 #include <vector>
 
-namespace LHAPDF {
-
 #ifdef FAKE_WRAPPERS
 
-inline std::unique_ptr<PDF> pdf_with_setname_and_member(std::string const&, std::int32_t) {
-        return std::unique_ptr<PDF>();
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_setname_and_member(std::string const&, std::int32_t) {
+    return std::unique_ptr<LHAPDF::PDF>();
 }
 
-inline std::unique_ptr<PDF> pdf_with_set_and_member(PDFSet const&, std::int32_t) {
-        return std::unique_ptr<PDF>();
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_set_and_member(LHAPDF::PDFSet const&, std::int32_t) {
+    return std::unique_ptr<LHAPDF::PDF>();
 }
 
-inline std::unique_ptr<PDF> pdf_with_setname_and_nmem(std::string const&) {
-        return std::unique_ptr<PDF>();
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_setname_and_nmem(std::string const&) {
+    return std::unique_ptr<LHAPDF::PDF>();
 }
 
-inline std::unique_ptr<PDF> pdf_with_lhaid(std::int32_t) {
-        return std::unique_ptr<PDF>();
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_lhaid(std::int32_t) {
+    return std::unique_ptr<LHAPDF::PDF>();
 }
 
-inline std::unique_ptr<PDFSet> pdfset_new(std::string const&) {
-        return std::unique_ptr<PDFSet>();
+inline std::unique_ptr<LHAPDF::PDFSet> pdfset_new(std::string const&) {
+    return std::unique_ptr<LHAPDF::PDFSet>();
 }
 
-inline std::unique_ptr<PDFSet> pdfset_from_pdf(PDF const&) {
-        return std::unique_ptr<PDFSet>();
+inline std::unique_ptr<LHAPDF::PDFSet> pdfset_from_pdf(LHAPDF::PDF const&) {
+    return std::unique_ptr<LHAPDF::PDFSet>();
 }
 
 inline void lookup_pdf_setname(std::int32_t, std::string&) {}
 
 inline std::int32_t lookup_pdf_memberid(std::int32_t) {
-        return 0;
+    return 0;
 }
 
-inline void get_pdfset_error_type(PDFSet const&, std::string&) {}
+inline void get_pdfset_error_type(LHAPDF::PDFSet const&, std::string&) {}
 
-inline PdfUncertainty pdf_uncertainty(PDFSet const&, rust::Slice<double const>, double, bool) {
-        PdfUncertainty result;
-            return result;
+inline PdfUncertainty pdf_uncertainty(
+    LHAPDF::PDFSet const&,
+    rust::Slice<double const>,
+    double,
+    bool
+) {
+    PdfUncertainty result;
+    return result;
 }
 
 #else
 
-inline std::unique_ptr<PDF> pdf_with_setname_and_member(
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_setname_and_member(
     std::string const& setname,
     std::int32_t member
 ) {
-    return std::unique_ptr<PDF>(mkPDF(setname, member));
+    return std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(setname, member));
 }
 
-inline std::unique_ptr<PDF> pdf_with_set_and_member(
-    PDFSet const& set,
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_set_and_member(
+    LHAPDF::PDFSet const& set,
     std::int32_t member
 ) {
     return pdf_with_setname_and_member(set.name(), member);
 }
 
-inline std::unique_ptr<PDF> pdf_with_setname_and_nmem(std::string const& setname_nmem) {
-    return std::unique_ptr<PDF>(mkPDF(setname_nmem));
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_setname_and_nmem(std::string const& setname_nmem) {
+    return std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(setname_nmem));
 }
 
-inline std::unique_ptr<PDF> pdf_with_lhaid(std::int32_t lhaid) {
-    return std::unique_ptr<PDF>(mkPDF(lhaid));
+inline std::unique_ptr<LHAPDF::PDF> pdf_with_lhaid(std::int32_t lhaid) {
+    return std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(lhaid));
 }
 
-inline std::unique_ptr<PDFSet> pdfset_new(std::string const& setname) {
-    return std::unique_ptr<PDFSet>(new PDFSet(setname));
+inline std::unique_ptr<LHAPDF::PDFSet> pdfset_new(std::string const& setname) {
+    return std::unique_ptr<LHAPDF::PDFSet>(new LHAPDF::PDFSet(setname));
 }
 
-inline std::unique_ptr<PDFSet> pdfset_from_pdf(PDF const& pdf) {
-    return std::unique_ptr<PDFSet>(new PDFSet(pdf.set()));
+inline std::unique_ptr<LHAPDF::PDFSet> pdfset_from_pdf(LHAPDF::PDF const& pdf) {
+    return std::unique_ptr<LHAPDF::PDFSet>(new LHAPDF::PDFSet(pdf.set()));
 }
 
 inline void lookup_pdf_setname(std::int32_t lhaid, std::string& setname) {
-    setname = lookupPDF(lhaid).first;
+    setname = LHAPDF::lookupPDF(lhaid).first;
 }
 
 inline std::int32_t lookup_pdf_memberid(std::int32_t lhaid) {
-    return lookupPDF(lhaid).second;
+    return LHAPDF::lookupPDF(lhaid).second;
 }
 
-inline void get_pdfset_error_type(PDFSet const& set, std::string& error_type) {
+inline void get_pdfset_error_type(LHAPDF::PDFSet const& set, std::string& error_type) {
     error_type = set.errorType();
 }
 
 inline PdfUncertainty pdf_uncertainty(
-    PDFSet const& pdfset,
+    LHAPDF::PDFSet const& pdfset,
     rust::Slice<double const> values,
     double cl,
     bool alternative
@@ -125,7 +128,5 @@ inline PdfUncertainty pdf_uncertainty(
 }
 
 #endif
-
-}
 
 #endif
