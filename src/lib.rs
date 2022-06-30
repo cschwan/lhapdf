@@ -52,6 +52,8 @@ mod ffi {
         fn lhapdfID(self: &PDF) -> i32;
         fn xMin(self: Pin<&mut PDF>) -> f64;
         fn xMax(self: Pin<&mut PDF>) -> f64;
+        fn setForcePositive(self: Pin<&mut PDF>, mode: i32);
+        fn forcePositive(self: &PDF) -> i32;
 
         type PDFSet;
 
@@ -228,6 +230,21 @@ impl Pdf {
     #[must_use]
     pub fn x_max(&mut self) -> f64 {
         self.ptr.pin_mut().xMax()
+    }
+
+    /// Set whether the PDF will only return positive (definite) values or not.
+    pub fn set_force_positive(&mut self, mode: i32) {
+        self.ptr.pin_mut().setForcePositive(mode);
+    }
+
+    /// Check whether the PDF is set to only return positive (definite) values or not.
+    ///
+    /// This is to avoid overshooting in to negative values when interpolating/extrapolating PDFs
+    /// that sharply decrease towards zero. 0 = unforced, 1 = forced positive, 2 = forced positive
+    /// definite (>= 1e-10).
+    #[must_use]
+    pub fn force_positive(&mut self) -> i32 {
+        self.ptr.pin_mut().forcePositive()
     }
 }
 
@@ -479,6 +496,18 @@ mod test {
 
         assert_eq!(pdf_set0.entry("Particle"), pdf_set1.entry("Particle"));
         assert_eq!(pdf_set0.entry("NumMembers"), pdf_set1.entry("NumMembers"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn force_positive() -> Result<()> {
+        let mut pdf = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 1)?;
+
+        assert_eq!(pdf.force_positive(), 0);
+
+        pdf.set_force_positive(1);
+        assert_eq!(pdf.force_positive(), 1);
 
         Ok(())
     }

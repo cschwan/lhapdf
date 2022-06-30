@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added methods `Pdf::force_positive` and `Pdf::set_force_positive`
+
 ## [0.2.0] - 17/05/2022
 
 - added function `Pdf::with_setname_and_nmem`
