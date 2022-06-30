@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 30/06/2022
+
 - added methods `Pdf::force_positive` and `Pdf::set_force_positive`
 
 ## [0.2.0] - 17/05/2022
@@ -63,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - first release
 
-[Unreleased]: https://github.com/cschwan/lhapdf/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/cschwan/lhapdf/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/cschwan/lhapdf/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/cschwan/lhapdf/compare/v0.1.11...v0.2.0
 [0.1.11]: https://github.com/cschwan/lhapdf/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/cschwan/lhapdf/compare/v0.1.9...v0.1.10
