@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- explicitly add `-std=c++11` compiler flag to support older compilers
+
 ## [0.2.1] - 30/06/2022
 
 - added methods `Pdf::force_positive` and `Pdf::set_force_positive`

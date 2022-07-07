@@ -11,7 +11,9 @@ fn main() {
         build.include(include_path);
     }
 
-    build.compile("lhapdf-rust-cxx-bridge");
+    build
+        .flag_if_supported("-std=c++11")
+        .compile("lhapdf-rust-cxx-bridge");
 
     for lib_path in lhapdf.link_paths {
         println!("cargo:rustc-link-search={}", lib_path.to_str().unwrap());
