@@ -41,7 +41,6 @@ jobs:
                 --ignore-filename-regex='lhapdf/tests' \
                 --instr-profile=pineappl.profdata \
                 --skip-functions \
-                --object target/debug/pineappl \
                 --format lcov > lcov.info
 
     - name: Upload to codecov.io
