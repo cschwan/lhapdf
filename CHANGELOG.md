@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- fixed building error on <https://docs.rs/crate/lhapdf/latest>
+
 ## [0.2.2] - 07/07/2022
 
 - explicitly add `-std=c++11` compiler flag to support older compilers

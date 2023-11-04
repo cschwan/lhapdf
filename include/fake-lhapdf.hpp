@@ -32,6 +32,13 @@ struct PDF {
         return 0;
     }
 
+    void setForcePositive(int) {
+    }
+
+    int forcePositive() const {
+        return 0;
+    }
+
     double xMin() {
         return 0.0;
     }
