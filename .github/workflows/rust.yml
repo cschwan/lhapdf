@@ -2,6 +2,10 @@ name: Rust
 
 on: [pull_request, push]
 
+defaults:
+  run:
+    shell: bash
+
 env:
   CARGO_TERM_COLOR: always
 
