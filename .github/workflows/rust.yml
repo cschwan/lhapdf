@@ -17,11 +17,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set RUSTDOCFLAGS
-      run: |
-        # relative paths sometimes don't work, so use an absolute path
-        echo "RUSTDOCFLAGS=-Cinstrument-coverage -Z unstable-options --persist-doctests $(pwd)/target/debug/doctestbins" >> "$GITHUB_ENV"
-
     - name: Run tests
       run: |
         # we need stderr, but we can't run test twice because it'll regenerate/modify the binaries which interferes with `llvm-cov`
@@ -31,7 +26,7 @@ jobs:
 
     - name: Generate code coverage
       run: |
-        find . -name '*.profraw' -exec $(rustc --print target-libdir)/../bin/llvm-profdata merge -sparse -o pineappl.profdata {} +
+        find . -name '*.profraw' -exec $(rustc --print target-libdir)/../bin/llvm-profdata merge -sparse -o lhapdf.profdata {} +
         ( sed -nE 's/[[:space:]]+Running( unittests|) [^[:space:]]+ \(([^)]+)\)/\2/p' stderr | tr ' ' "\n" ) | \
             xargs printf ' --object %s' | \
             xargs $(rustc --print target-libdir)/../bin/llvm-cov export \
@@ -39,7 +34,7 @@ jobs:
                 --ignore-filename-regex='/cargo/registry' \
                 --ignore-filename-regex='rustc' \
                 --ignore-filename-regex='lhapdf/tests' \
-                --instr-profile=pineappl.profdata \
+                --instr-profile=lhapdf.profdata \
                 --skip-functions \
                 --format lcov > lcov.info
 
