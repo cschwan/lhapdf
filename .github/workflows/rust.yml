@@ -7,45 +7,39 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    container: ghcr.io/nnpdf/pineappl-ci:latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-    - name: Install LHAPDF
-      env:
-        LHAPDF: LHAPDF-6.3.0
+    - uses: actions/checkout@v3
+
+    - name: Set RUSTDOCFLAGS
       run: |
-        wget "https://lhapdf.hepforge.org/downloads/?f=${LHAPDF}.tar.gz" -O ${LHAPDF}.tar.gz
-        tar xzf ${LHAPDF}.tar.gz
-        cd ${LHAPDF}
-        ./configure --prefix=${HOME}/prefix
-        make -j
-        make install
-        echo "${HOME}/prefix/bin" >> $GITHUB_PATH
-        echo "LD_LIBRARY_PATH=${HOME}/prefix/lib" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=${HOME}/prefix/lib/pkgconfig" >> $GITHUB_ENV
-        echo "PYTHONPATH=${HOME}/prefix/lib/python3.7/site-packages" >> $GITHUB_ENV
-    - name: Install NNPDF31_nlo_as_0118_luxqed
+        # relative paths sometimes don't work, so use an absolute path
+        echo "RUSTDOCFLAGS=-Cinstrument-coverage -Z unstable-options --persist-doctests $(pwd)/target/debug/doctestbins" >> "$GITHUB_ENV"
+
+    - name: Run tests
       run: |
-        lhapdf install NNPDF31_nlo_as_0118_luxqed
-    - name: Install Rust nightly
-      uses: actions-rs/toolchain@v1
-      with:
-          toolchain: nightly
-          default: true
-    - name: Run check
-      run: cargo check --verbose
-    - name: Generate doctest coverage
-      uses: actions-rs/tarpaulin@v0.1
-      with:
-        args: --ignore-tests
-        run-types: Doctests,Tests
+        # we need stderr, but we can't run test twice because it'll regenerate/modify the binaries which interferes with `llvm-cov`
+        cargo test --no-fail-fast 2> >(tee stderr 1>&2)
+        # from https://stackoverflow.com/a/51141872/812178
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' stderr
+
+    - name: Generate code coverage
+      run: |
+        find . -name '*.profraw' -exec $(rustc --print target-libdir)/../bin/llvm-profdata merge -sparse -o pineappl.profdata {} +
+        ( sed -nE 's/[[:space:]]+Running( unittests|) [^[:space:]]+ \(([^)]+)\)/\2/p' stderr && echo target/debug/doctestbins/*/rust_out | tr ' ' "\n" ) | \
+            xargs printf ' --object %s' | \
+            xargs $(rustc --print target-libdir)/../bin/llvm-cov export \
+                --ignore-filename-regex='/.cargo/registry' \
+                --ignore-filename-regex='/cargo/registry' \
+                --ignore-filename-regex='rustc' \
+                --ignore-filename-regex='lhapdf/tests' \
+                --instr-profile=pineappl.profdata \
+                --skip-functions \
+                --object target/debug/pineappl \
+                --format lcov > lcov.info
+
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v3
       with:
         token: ${{secrets.CODECOV_TOKEN}}
