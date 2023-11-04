@@ -8,6 +8,7 @@ defaults:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-Cinstrument-coverage'
 
 jobs:
   build:
