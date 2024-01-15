@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- added `Pdf::flavors` and `Pdf::set_flavors` methods
+
 ## [0.2.3] - 04/11/2023
 
 - fixed building error on <https://docs.rs/crate/lhapdf/latest>

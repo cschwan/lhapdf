@@ -32,6 +32,14 @@ struct PDF {
         return 0;
     }
 
+    std::vector<int> const& flavors() const {
+        return flavors_;
+    }
+
+    void setFlavors(std::vector<int> const& flavors) {
+        flavors_ = flavors;
+    }
+
     void setForcePositive(int) {
     }
 
@@ -46,6 +54,9 @@ struct PDF {
     double xMax() {
         return 1.0;
     }
+
+private:
+    std::vector<int> flavors_;
 };
 
 struct PDFSet {

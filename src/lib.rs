@@ -3,7 +3,7 @@
 
 //! (Unofficial) Rust wrapper for the [LHAPDF](https://lhapdf.hepforge.org) C++ library.
 
-use cxx::{let_cxx_string, Exception, UniquePtr};
+use cxx::{let_cxx_string, CxxVector, Exception, UniquePtr};
 use std::convert::TryFrom;
 use std::fmt::{self, Formatter};
 use std::result;
@@ -52,7 +52,9 @@ mod ffi {
         fn lhapdfID(self: &PDF) -> i32;
         fn xMin(self: Pin<&mut PDF>) -> f64;
         fn xMax(self: Pin<&mut PDF>) -> f64;
+        fn setFlavors(self: Pin<&mut PDF>, flavors: &CxxVector<i32>);
         fn setForcePositive(self: Pin<&mut PDF>, mode: i32);
+        fn flavors<'a>(self: &'a PDF) -> &'a CxxVector<i32>;
         fn forcePositive(self: &PDF) -> i32;
 
         type PDFSet;
@@ -245,6 +247,23 @@ impl Pdf {
     #[must_use]
     pub fn force_positive(&mut self) -> i32 {
         self.ptr.pin_mut().forcePositive()
+    }
+
+    /// List of flavours defined by this [`Pdf`] set.
+    #[must_use]
+    pub fn flavors(&self) -> Vec<i32> {
+        self.ptr.flavors().iter().copied().collect()
+    }
+
+    /// Manually set/override the list of flavours defined by this [`Pdf`] set.
+    pub fn set_flavors(&mut self, flavors: &[i32]) {
+        let mut vector = CxxVector::new();
+
+        flavors
+            .iter()
+            .for_each(|&flavor| vector.pin_mut().push(flavor));
+
+        self.ptr.pin_mut().setFlavors(&vector);
     }
 }
 
@@ -510,5 +529,16 @@ mod test {
         assert_eq!(pdf.force_positive(), 1);
 
         Ok(())
+    }
+
+    #[test]
+    fn set_flavors() {
+        let mut pdf = Pdf::with_setname_and_member("NNPDF31_nlo_as_0118_luxqed", 0).unwrap();
+
+        assert_eq!(pdf.flavors(), &[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 21, 22]);
+
+        pdf.set_flavors(&[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 21]);
+
+        assert_eq!(pdf.flavors(), &[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 21]);
     }
 }
